@@ -20,7 +20,7 @@ BEGIN {
   buffer[w,h]
   ZBuffer[w]
   #ugly 2d array initialization
-  sprite[0][0]
+  sprite[0,0]
   delete sprite[0]
 
   reloadTimeLeft = 0;
@@ -134,17 +134,17 @@ BEGIN {
 
 function addSprite(x,y, dX,dY, tex, color, isBright, type, uDiv, vDiv, vMove) {
   n = length(sprite)+1
-  sprite[n]["dirX"]=dX
-  sprite[n]["dirY"]=dY
-  sprite[n]["posX"]=x
-  sprite[n]["posY"]=y
-  sprite[n]["tex"]=tex
-  sprite[n]["color"]=color
-  sprite[n]["isBright"]=isBright
-  sprite[n]["type"]=type
-  sprite[n]["vDiv"]=vDiv
-  sprite[n]["uDiv"]=uDiv
-  sprite[n]["vMove"]=vMove
+  sprite[n,"dirX"]=dX
+  sprite[n,"dirY"]=dY
+  sprite[n,"posX"]=x
+  sprite[n,"posY"]=y
+  sprite[n,"tex"]=tex
+  sprite[n,"color"]=color
+  sprite[n,"isBright"]=isBright
+  sprite[n,"type"]=type
+  sprite[n,"vDiv"]=vDiv
+  sprite[n,"uDiv"]=uDiv
+  sprite[n,"vMove"]=vMove
 }
 
 function spawnMonster(){
@@ -289,11 +289,11 @@ function getPixel(basecolor, isBright, colormode, tex){
 }
 
 function distSP(i, x, y){
-  return distPP(sprite[i]["posX"], sprite[i]["posY"], x, y)
+  return distPP(sprite[i,"posX"], sprite[i,"posY"], x, y)
 }
 
 function distSS(i, j){
-  return distPP(sprite[i]["posX"], sprite[i]["posY"], sprite[j]["posX"], sprite[j]["posY"])
+  return distPP(sprite[i,"posX"], sprite[i,"posY"], sprite[j,"posX"], sprite[j,"posY"])
 }
 
 function distPP(x1, y1, x2, y2){
@@ -308,12 +308,12 @@ function inPosition(){
 }
 
 function moveSprite(n, speed) {
-  newPosX = sprite[n]["posX"]+sprite[n]["dirX"]*speed
-  newPosY = sprite[n]["posY"]+sprite[n]["dirY"]*speed
-  if(worldMap(newPosX,sprite[n]["posY"]) == 0)
-    sprite[n]["posX"] = newPosX
-  if(worldMap(sprite[n]["posX"],newPosY) == 0)
-    sprite[n]["posY"] = newPosY
+  newPosX = sprite[n,"posX"]+sprite[n,"dirX"]*speed
+  newPosY = sprite[n,"posY"]+sprite[n,"dirY"]*speed
+  if(worldMap(newPosX,sprite[n,"posY"]) == 0)
+    sprite[n,"posX"] = newPosX
+  if(worldMap(sprite[n,"posX"],newPosY) == 0)
+    sprite[n,"posY"] = newPosY
   return (worldMap(newPosX,newPosY) == 0)
 }
 
@@ -438,16 +438,17 @@ function main()
 
     #sort sprites from far to close
     for(i in sprite) {
-      sprite[i]["dist"] = distSP(i, posX, posY)
+      sprite[i,"dist"] = distSP(i, posX, posY)
     }
-    asort(sprite, sprite, "compareSprites")
+    #TODO - NP - Write sorting algo for awk3 with custom function support
+    #asort(sprite, sprite, "compareSprites")
 
     #after sorting the sprites, do the projection and draw them
     for(i in sprite)
     {
       #translate sprite position to relative to camera
-      spriteX = sprite[i]["posX"] - posX;
-      spriteY = sprite[i]["posY"] - posY;
+      spriteX = sprite[i,"posX"] - posX;
+      spriteY = sprite[i,"posY"] - posY;
 
       #transform sprite with the inverse camera matrix
       #required for correct matrix multiplication
@@ -460,11 +461,11 @@ function main()
       spriteScreenX = int((w / 2) * (1 + transformX / transformY));
 
       #controls moving the sprite up or down
-      vMoveScreen = int(sprite[i]["vMove"] / transformY);
+      vMoveScreen = int(sprite[i,"vMove"] / transformY);
 
       #calculate height of the sprite on screen
       #using "transformY" instead of the real distance prevents fisheye
-      spriteHeight = abs(int((h / transformY) / sprite[i]["vDiv"]));
+      spriteHeight = abs(int((h / transformY) / (sprite[i,"vDiv"]+0.01)));
       #calculate lowest and highest pixel to fill in current stripe
       drawStartY = int(int(-spriteHeight/2) + h/2 + vMoveScreen);
       if(drawStartY < 0) drawStartY = 0;
@@ -472,7 +473,7 @@ function main()
       if(drawEndY >= h) drawEndY = h - 1;
 
       #calculate width of the sprite
-      spriteWidth = abs(int((h /transformY) / sprite[i]["uDiv"]));
+      spriteWidth = abs(int((h /transformY) / (sprite[i,"uDiv"]+0.01)));
       drawStartX = int(spriteScreenX-int(spriteWidth / 2));
       if(drawStartX < 0) drawStartX = 0;
       drawEndX = int(int(spriteWidth / 2) + spriteScreenX);
@@ -484,7 +485,7 @@ function main()
         for(y = drawStartY; y <= drawEndY; y++){ #for every pixel of the current stripe
           draw as circle
           if((stripe-spriteScreenX)*(stripe-spriteScreenX)+(y-h/2)*(y-h/2) <= spriteHeight*spriteHeight/4){
-            pixel = getPixel(sprite[i]["color"], sprite[i]["isBright"], colormode, sprite[i]["tex"]);
+            pixel = getPixel(sprite[i,"color"], sprite[i,"isBright"], colormode, sprite[i,"tex"]);
             buffer[stripe,y] = pixel;
           }
         }
@@ -508,7 +509,7 @@ function main()
       ok = 1;
       for(i in sprite) {
         dist = distSP(i, newPosX, newPosY);
-        if(dist < 0.51 && sprite[i]["type"] == "monster")
+        if(dist < 0.51 && sprite[i,"type"] == "monster")
           ok = 0;
       }
       if(ok){
@@ -551,19 +552,19 @@ function main()
     for(i in sprite){
       if(!(i in sprite))
         continue
-      if (sprite[i]["type"] == "monster"){
+      if (sprite[i,"type"] == "monster"){
         d = distSP(i, posX, posY)
-        sprite[i]["dirX"] = (posX - sprite[i]["posX"]) / d
-        sprite[i]["dirY"] = (posY - sprite[i]["posY"]) / d
-        x = sprite[i]["posX"]+sprite[i]["dirX"]*0.5
-        y = sprite[i]["posY"]+sprite[i]["dirY"]*0.5
+        sprite[i,"dirX"] = (posX - sprite[i,"posX"]) / d
+        sprite[i,"dirY"] = (posY - sprite[i,"posY"]) / d
+        x = sprite[i,"posX"]+sprite[i,"dirX"]*0.5
+        y = sprite[i,"posY"]+sprite[i,"dirY"]*0.5
         if(d > 0.7){
           #prevent clustering of monsters
           ok = 1
           for(j in sprite){
             if(!(j in sprite))
               continue
-            if(sprite[j]["type"] == "monster" && i != j && distSP(j,x,y) < 1)
+            if(sprite[j,"type"] == "monster" && i != j && distSP(j,x,y) < 1)
               ok = 0;
           }
           if(ok)
@@ -580,11 +581,11 @@ function main()
     for(i in sprite){
       if(!(i in sprite))
         continue
-      if (sprite[i]["type"] == "bullet"){
+      if (sprite[i,"type"] == "bullet"){
         for(j in sprite){
           if(!(j in sprite))
             continue
-          if (sprite[j]["type"] == "monster"){
+          if (sprite[j,"type"] == "monster"){
             if(distSS(i,j) < 1){
               delete sprite[j]
               delete sprite[i]
